@@ -51,6 +51,8 @@ final class MIDIEngine: ObservableObject {
     private let audioEngine = AVAudioEngine()
     private let reverb = AVAudioUnitReverb()
     private let gainNode = AVAudioMixerNode()
+    private let theremin = ThereminOscillator()
+    private var thereminNode: AVAudioSourceNode?
     private var synth: AVAudioUnit?
     private var synthReady = false
     private var tick: Timer?
@@ -97,7 +99,7 @@ final class MIDIEngine: ObservableObject {
             currentTime = 0
             loadedURL = url
             remember(url)
-            engineLabel = synthReady ? "DLS Synth" : "Starting…"
+            engineLabel = synthReady ? synthLabel(for: parsed) : "Starting…"
         } catch {
             song = nil
             fileName = ""
@@ -284,8 +286,12 @@ final class MIDIEngine: ObservableObject {
         applyReverb()
 
         // nil format lets the engine negotiate; a forced format can bypass the mixer.
+        let node = theremin.makeNode()
+        thereminNode = node
+        audioEngine.attach(node)
         audioEngine.connect(unit, to: reverb, format: nil)
         audioEngine.connect(reverb, to: gainNode, format: nil)
+        audioEngine.connect(node, to: gainNode, format: nil)
         audioEngine.connect(gainNode, to: audioEngine.mainMixerNode, format: nil)
         applyVolume()
 
@@ -293,7 +299,9 @@ final class MIDIEngine: ObservableObject {
             audioEngine.prepare()
             try audioEngine.start()
             synthReady = true
-            engineLabel = "DLS Synth"
+            let rate = node.outputFormat(forBus: 0).sampleRate
+            if rate > 0 { theremin.setSampleRate(rate) }
+            engineLabel = synthLabel(for: song)
         } catch {
             engineLabel = "No synth"
             errorMessage = error.localizedDescription
@@ -365,20 +373,36 @@ final class MIDIEngine: ObservableObject {
     }
 
     private func applyInstrumentOverride() {
+        let wasPlaying = isPlaying
+        if wasPlaying {
+            allSoundOff()
+            sounding.removeAll()
+        }
         lastProgram.removeAll()
         sendPrograms()
+        if wasPlaying {
+            startHeldNotes(at: currentTime)
+        }
     }
 
     private func sendPrograms() {
         guard let song, let au = synthAU else { return }
         var sent = Set<UInt8>()
         for note in song.notes {
+            let program = resolvedProgram(for: note)
+            if GMInstruments.isTheremin(program) { continue }
             if sent.insert(note.channel).inserted {
-                let program = resolvedProgram(for: note)
                 MusicDeviceMIDIEvent(au, 0xC0 | UInt32(note.channel), UInt32(program), 0, 0)
                 lastProgram[note.channel] = program
             }
         }
+    }
+
+    private func synthLabel(for song: MIDISong?) -> String {
+        if song?.notes.contains(where: { GMInstruments.isTheremin($0.program) }) == true {
+            return "DLS + Theremin"
+        }
+        return "DLS Synth"
     }
 
     private func startHeldNotes(at time: TimeInterval) {
@@ -389,8 +413,14 @@ final class MIDIEngine: ObservableObject {
     }
 
     private func startNote(_ note: MIDINote) {
-        guard let au = synthAU else { return }
         let program = resolvedProgram(for: note)
+        if GMInstruments.isTheremin(program) {
+            guard note.velocity > 0 else { return }
+            theremin.noteOn(pitch: note.pitch, velocity: note.velocity, noteID: note.id)
+            sounding.insert(note.id)
+            return
+        }
+        guard let au = synthAU else { return }
         if lastProgram[note.channel] != program {
             MusicDeviceMIDIEvent(au, 0xC0 | UInt32(note.channel), UInt32(program), 0, 0)
             lastProgram[note.channel] = program
@@ -402,12 +432,19 @@ final class MIDIEngine: ObservableObject {
     }
 
     private func stopNote(_ note: MIDINote) {
+        theremin.noteOff(noteID: note.id)
+        let program = resolvedProgram(for: note)
+        if GMInstruments.isTheremin(program) {
+            sounding.remove(note.id)
+            return
+        }
         guard let au = synthAU else { return }
         MusicDeviceMIDIEvent(au, 0x80 | UInt32(note.channel), UInt32(note.pitch), 0, 0)
         sounding.remove(note.id)
     }
 
     private func allSoundOff() {
+        theremin.allOff()
         guard let au = synthAU else { return }
         for channel in 0..<16 {
             let status: UInt32 = 0xB0 | UInt32(channel)

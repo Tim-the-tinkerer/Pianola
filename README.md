@@ -9,7 +9,7 @@ Two C major scale studies are bundled so it plays something the first time you o
 - Play, pause, stop, seek, loop
 - Tempo (0.25×–2×) and volume
 - Optional chamber reverb
-- **Instrument** override — same General MIDI menu as Glyphone (or leave **As written**)
+- **Instrument** override — same General MIDI menu as Glyphone (or leave **As written**). As written keeps Theremin when the file names that instrument
 - Piano roll with click-to-seek
 - Keyboard that lights up with the sounding notes — click a key to preview
 - Track list with General MIDI instrument names
@@ -41,4 +41,4 @@ Keyboard: **Space** play/pause · **⌘O** open · **⌘.** stop.
 
 ## Tech
 
-SwiftUI + AppKit shell. MIDI is parsed locally for the roll and keyboard. Playback uses the macOS DLS General MIDI synth via `AVAudioEngine` + `AVAudioSequencer`, with `AVMIDIPlayer` as a fallback. SwiftPM package; same layout as Binaural / Sonora.
+SwiftUI + AppKit shell. MIDI is parsed locally for the roll and keyboard. Playback uses the macOS DLS General MIDI synth via `AVAudioEngine`. As written plays an in-app Theremin when the file’s instrument name is Theremin, or the track title ends in `(Theremin)`. SwiftPM package; same layout as Binaural / Sonora.

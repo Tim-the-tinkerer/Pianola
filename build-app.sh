@@ -24,11 +24,15 @@ fi
 echo "Building Pianola ${VERSION} (release)..."
 swift build -c release
 
-BIN=".build/release/Pianola"
+BIN_DIR="$(swift build -c release --show-bin-path)"
+BIN="${BIN_DIR}/Pianola"
 if [[ ! -x "${BIN}" ]]; then
     echo "error: expected binary not found at ${BIN}" >&2
     exit 1
 fi
+
+echo "Self-test..."
+"${BIN}" --self-test
 
 echo "Assembling ${APP}..."
 rm -rf "${APP}"

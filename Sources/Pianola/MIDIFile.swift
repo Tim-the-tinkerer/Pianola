@@ -125,6 +125,7 @@ enum MIDIFile {
         var title = ""
         var rawNotes: [RawNote] = []
         var tracks: [MIDITrackInfo] = []
+        var thereminTracks = Set<Int>()
         var nextID = 0
 
         for trackIndex in 0..<trackCount {
@@ -137,6 +138,7 @@ enum MIDIFile {
             var tick = 0
             var running: UInt8 = 0
             var trackName = ""
+            var instrumentName = ""
             var programForChannel = [UInt8](repeating: 0, count: 16)
             var firstProgram: UInt8?
             var firstChannel: UInt8?
@@ -174,13 +176,17 @@ enum MIDIFile {
                         denominator = 1 << Int(payload[1])
                     } else if meta == 0x59, payload.count >= 2 {
                         keySignature = keyName(sf: Int8(bitPattern: payload[0]), minor: payload[1] == 1)
-                    } else if meta == 0x03 {
+                    } else if meta == 0x03 || meta == 0x04 {
                         let name = String(bytes: payload, encoding: .utf8)
                             ?? String(bytes: payload, encoding: .isoLatin1)
                             ?? ""
                         if !name.isEmpty {
-                            trackName = name
-                            if title.isEmpty { title = name }
+                            if meta == 0x04 {
+                                instrumentName = name
+                            } else {
+                                trackName = name
+                                if title.isEmpty { title = name }
+                            }
                         }
                     }
                     continue
@@ -266,8 +272,19 @@ enum MIDIFile {
                 continue
             }
 
+            let writtenTheremin = GMInstruments.isWrittenTheremin(
+                trackName: trackName,
+                instrumentName: instrumentName
+            )
+            if writtenTheremin {
+                firstProgram = GMInstruments.theremin
+                thereminTracks.insert(trackIndex)
+            }
+
             let displayName: String
-            if !trackName.isEmpty {
+            if writtenTheremin {
+                displayName = "Theremin"
+            } else if !trackName.isEmpty {
                 displayName = trackName
             } else if let firstProgram {
                 displayName = GMInstruments.shortName(for: firstProgram)
@@ -316,7 +333,8 @@ enum MIDIFile {
         }
 
         let notes: [MIDINote] = rawNotes.map { raw in
-            MIDINote(
+            let program = thereminTracks.contains(raw.track) ? GMInstruments.theremin : raw.program
+            return MIDINote(
                 id: raw.id,
                 pitch: raw.pitch,
                 velocity: raw.velocity,
@@ -326,7 +344,7 @@ enum MIDIFile {
                 endTick: raw.endTick,
                 start: seconds(forTick: raw.startTick),
                 end: seconds(forTick: raw.endTick),
-                program: raw.program
+                program: program
             )
         }.sorted { a, b in
             if a.start == b.start { return a.pitch < b.pitch }

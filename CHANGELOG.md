@@ -5,6 +5,12 @@ All notable changes to **Pianola** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - 2026-10-03
+
+### Added
+
+- **As written** recognizes Theremin. A track whose instrument name is Theremin, or whose title ends in `(Theremin)`, stays Theremin instead of becoming Ocarina, and plays with the Theremin voice.
+
 ## [1.2.0] - 2026-08-25
 
 ### Changed

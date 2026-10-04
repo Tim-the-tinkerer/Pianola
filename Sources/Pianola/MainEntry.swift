@@ -4,6 +4,9 @@ import SwiftUI
 @main
 struct MainEntry {
     static func main() {
+        if CommandLine.arguments.contains("--self-test") {
+            exit(PianolaSelfTest.run())
+        }
         let app = NSApplication.shared
         let delegate = AppDelegate.shared
         app.delegate = delegate
@@ -134,7 +137,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 Open Standard MIDI files (.mid), watch notes light up as they play, \
                 and drop in your own sequences. Bundled with two C major scale studies.
 
-                Uses the macOS General MIDI DLS synth.
+                Uses the macOS General MIDI DLS synth. As written plays Theremin when the file names that instrument.
                 """,
                 attributes: [
                     .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),

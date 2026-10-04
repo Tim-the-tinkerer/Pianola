@@ -39,10 +39,31 @@ enum GMInstruments {
     /// Same shortlist Glyphone pins at the top of the instrument menu.
     static let favorites: [UInt8] = [0, 4, 6, 10, 11, 12, 19, 24, 40, 46, 48, 52, 68, 73, 79, 88, 108]
 
+    /// Melograph writes this voice as Ocarina (79) plus the name Theremin.
+    /// 255 is outside General MIDI, so it never collides with a real patch.
+    static let theremin: UInt8 = 255
+
+    static func isTheremin(_ program: UInt8) -> Bool {
+        program == theremin
+    }
+
+    /// A file marks Theremin either with an instrument-name meta of “Theremin”
+    /// or with Melograph’s “ (Theremin)” track title.
+    static func isWrittenTheremin(trackName: String, instrumentName: String) -> Bool {
+        markedTheremin(trackName) || markedTheremin(instrumentName)
+    }
+
     static func name(for program: UInt8) -> String {
+        if program == theremin { return "Theremin" }
         let i = Int(program)
         guard i >= 0, i < names.count else { return "Program \(program)" }
         return names[i]
+    }
+
+    private static func markedTheremin(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.compare("Theremin", options: .caseInsensitive) == .orderedSame { return true }
+        return trimmed.lowercased().hasSuffix("(theremin)")
     }
 
     static func shortName(for program: UInt8) -> String {

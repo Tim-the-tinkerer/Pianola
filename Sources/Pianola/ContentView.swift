@@ -358,7 +358,7 @@ struct ContentView: View {
                 }
                 .pickerStyle(.menu)
                 .frame(minWidth: 160, maxWidth: 220)
-                .help("Override every track with a General MIDI patch, or keep the file’s programs.")
+                .help("As written keeps each track’s program, including Theremin when the file names it. Any other choice replaces every track.")
                 .disabled(engine.song == nil)
 
                 Spacer()
